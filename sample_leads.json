@@ -1,0 +1,26 @@
+[
+  {
+    "id": "hot",
+    "name": "Maya Chen",
+    "email": "maya.chen@northlineops.com",
+    "company": "Northline Ops",
+    "source": "website-form",
+    "inquiry": "We need a lead intake + follow-up automation for our consulting firm. Budget is about $4-6k. Looking to start this month if you can show a clear workflow and ownership model. Can we talk this week?"
+  },
+  {
+    "id": "warm",
+    "name": "Jordan Blake",
+    "email": "jordan@studiofork.co",
+    "company": "Studio Fork",
+    "source": "referral",
+    "inquiry": "Curious about AI workflows for client onboarding. Not urgent - mostly researching options for Q4. Budget still flexible."
+  },
+  {
+    "id": "spam",
+    "name": "Crypto Kingz 777",
+    "email": "winbig@not-a-real-domain.xyz",
+    "company": "",
+    "source": "website-form",
+    "inquiry": "CLICK HERE for guaranteed passive income!!! Make $10,000/day with AI agents. Limited spots. Wire funds to start. Not a scam I promise."
+  }
+]
