@@ -1,0 +1,129 @@
+{
+  "name": "Lead Intake - Claude Scoring (starter)",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Lead Intake",
+        "formDescription": "Capture an inbound lead for AI qualification",
+        "formFields": {
+          "values": [
+            { "fieldLabel": "Name", "fieldType": "text", "requiredField": true },
+            { "fieldLabel": "Email", "fieldType": "email", "requiredField": true },
+            { "fieldLabel": "Company", "fieldType": "text", "requiredField": false },
+            { "fieldLabel": "Message", "fieldType": "textarea", "requiredField": true }
+          ]
+        },
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "form-trigger",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"model\": \"claude-haiku-4-5-20251001\", \"max_tokens\": 1024, \"system\": \"Lead qualification assistant. Return ONLY valid JSON with service_interest, lead_score, priority, summary, suggested_reply.\", \"messages\": [{ \"role\": \"user\", \"content\": \"Name: {{ $json.Name }}\\nEmail: {{ $json.Email }}\\nCompany: {{ $json.Company }}\\nInquiry: {{ $json.Message }}\" }] }",
+        "options": { "timeout": 30000 }
+      },
+      "id": "claude-http",
+      "name": "Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300],
+      "notes": "Use Header Auth credential x-api-key = ANTHROPIC_API_KEY. Never hardcode keys."
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.content[0].text;\nconst clean = raw.replace(/```json|```/g, '').trim();\nconst ai = JSON.parse(clean);\nconst form = $('On form submission').first().json;\nreturn [{ json: { name: form.Name, email: form.Email, company: form.Company || '', inquiry: form.Message, service_interest: ai.service_interest, lead_score: ai.lead_score, priority: ai.priority, summary: ai.summary, suggested_reply: ai.suggested_reply } }];"
+      },
+      "id": "parse-json",
+      "name": "Parse Claude JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "is-hot",
+              "leftValue": "={{ $json.priority }}",
+              "rightValue": "Hot",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-hot",
+      "name": "IF Hot",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1080, 300],
+      "notes": "Pipeline branch for ops demos. Compare with the Python agent where the model chooses tools instead of IF nodes."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "route", "name": "route", "value": "hot_alert", "type": "string" },
+            { "id": "subject", "name": "alert_subject", "value": "=Hot lead: {{ $json.name }} ({{ $json.lead_score }}/100)", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "hot-path",
+      "name": "Hot path (notify + draft)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1360, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "route", "name": "route", "value": "log_only_or_review", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "other-path",
+      "name": "Warm/Cold/Other path",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1360, 400]
+    }
+  ],
+  "connections": {
+    "On form submission": { "main": [[{ "node": "Claude API", "type": "main", "index": 0 }]] },
+    "Claude API": { "main": [[{ "node": "Parse Claude JSON", "type": "main", "index": 0 }]] },
+    "Parse Claude JSON": { "main": [[{ "node": "IF Hot", "type": "main", "index": 0 }]] },
+    "IF Hot": {
+      "main": [
+        [{ "node": "Hot path (notify + draft)", "type": "main", "index": 0 }],
+        [{ "node": "Warm/Cold/Other path", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Starter n8n pipeline mirror. Add Airtable + Gmail for full production path. See docs/build-guide.md."
+  }
+}
